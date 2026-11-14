@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Жёлтые блёстки</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Нажимай на экран, и на нём появляются блёстки.">
+<meta name="theme-color" content="#FFD400">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&family=Unbounded:wght@700&display=swap">
+<style>
+/* Layout: один экран. Сверху название и счётчик, снизу крупный заголовок с подсказкой, холст с блёстками лежит поверх всего. */
+:root {
+  --sun: #FFD400;
+  --sun-light: #FFE766;
+  --milk: #FFFBEA;
+  --ink: #3A2900;
+  --ink-hover: #5A3F00;
+  --display: 'Unbounded', 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'Manrope', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: light;
+}
+
+html {
+  box-sizing: border-box;
+  height: 100%;
+  background: var(--sun);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--sun);
+  background-image: radial-gradient(120% 90% at 18% 12%, var(--sun-light) 0%, var(--sun) 58%);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+.stage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.count {
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--milk);
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, min(15vw, 17vh), 8rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+button {
+  font: 700 1rem/1 var(--body);
+  color: var(--sun);
+  background: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 22px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+button:hover { background: var(--ink-hover); }
+button:active { transform: scale(0.97); }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+#fx {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@media (max-height: 480px) {
+  h1 br { display: none; }
+  h1 { font-size: clamp(1.8rem, 9vh, 3rem); }
+  .stage { gap: 12px; padding-block: 12px 16px; }
+  .bottom { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <header class="top">
+    <span class="name">Блёстки</span>
+    <p class="count">Блёсток: <span id="count">0</span></p>
+  </header>
+  <section class="bottom">
+    <h1>Нажми <br>куда <br>хочешь</h1>
+    <p class="hint">Тапни или кликни, и посыплются блёстки. Зажми и води пальцем, останется след.</p>
+    <button id="more" type="button">Сыпануть ещё</button>
+  </section>
+</main>
+<canvas id="fx" aria-hidden="true"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  const countEl = document.getElementById('count');
+  const moreBtn = document.getElementById('more');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const fmt = new Intl.NumberFormat('ru-RU');
+  const TAU = Math.PI * 2;
+  const MAX = 900;
+
+  const PALETTE = [
+    { fill: '#FFFFFF', glow: '#FF9F00' },
+    { fill: '#FFFFFF', glow: '#FFFFFF' },
+    { fill: '#FFFBEA', glow: '#FFB000' },
+    { fill: '#FFAA00', glow: '#FFFFFF' },
+    { fill: '#F57C00', glow: '#FFE766' },
+    { fill: '#FF8F1F', glow: '#FFF3A8' }
+  ];
+
+  // Четырёхлучевая звезда с вогнутыми сторонами.
+  function starPath(g, r) {
+    const k = 0.16 * r;
+    g.beginPath();
+    g.moveTo(0, -r);
+    g.quadraticCurveTo(k, -k, r, 0);
+    g.quadraticCurveTo(k, k, 0, r);
+    g.quadraticCurveTo(-k, k, -r, 0);
+    g.quadraticCurveTo(-k, -k, 0, -r);
+    g.closePath();
+  }
+
+  // Каждую блёстку рисуем один раз в маленький холст, потом только копируем.
+  function makeSprite(c, shape) {
+    const s = document.createElement('canvas');
+    s.width = s.height = 64;
+    const g = s.getContext('2d');
+    g.translate(32, 32);
+    g.shadowColor = c.glow;
+    g.shadowBlur = 7;
+    g.fillStyle = c.fill;
+    if (shape === 'star') {
+      starPath(g, 24);
+    } else {
+      g.beginPath();
+      g.arc(0, 0, 9, 0, TAU);
+    }
+    g.fill();
+    return s;
+  }
+
+  const starSprites = PALETTE.map((c) => makeSprite(c, 'star'));
+  const dotSprites = PALETTE.map((c) => makeSprite(c, 'dot'));
+
+  // Звёзды, которые мерцают на фоне и без нажатий.
+  const ambient = Array.from({ length: 16 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    size: 7 + Math.random() * 11,
+    phase: Math.random() * TAU,
+    speed: 0.8 + Math.random() * 1.4,
+    sprite: starSprites[(Math.random() * 3) | 0]
+  }));
+
+  const particles = [];
+  let total = 0;
+  let W = 0, H = 0, dpr = 1;
+  let raf = 0, prev = 0;
+
+  function emit(x, y, n, kind) {
+    const trail = kind === 'trail';
+    const count = Math.max(1, Math.round(n * (reduce.matches ? 0.5 : 1)));
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * TAU;
+      const sp = trail ? 20 + Math.random() * 90 : 60 + Math.random() * 340;
+      const dot = Math.random() < 0.35;
+      const idx = (Math.random() * PALETTE.length) | 0;
+      const base = dot ? 6 + Math.random() * 6 : 9 + Math.random() * 15;
+      particles.push({
+        x: x + (trail ? (Math.random() - 0.5) * 14 : 0),
+        y: y + (trail ? (Math.random() - 0.5) * 14 : 0),
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - (trail ? 0 : 40),
+        rot: Math.random() * TAU,
+        vr: (Math.random() - 0.5) * 5,
+        size: trail ? base * 0.8 : base,
+        sprite: (dot ? dotSprites : starSprites)[idx],
+        age: 0,
+        life: 0.7 + Math.random() * 0.9,
+        phase: Math.random() * TAU
+      });
+    }
+    if (particles.length > MAX) particles.splice(0, particles.length - MAX);
+    return count;
+  }
+
+  function update(dt) {
+    const drag = Math.pow(0.12, dt);
+    let w = 0;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.age += dt;
+      if (p.age >= p.life) continue;
+      p.vx *= drag;
+      p.vy = p.vy * drag + 260 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      particles[w++] = p;
+    }
+    particles.length = w;
+  }
+
+  function put(sprite, x, y, h, rot, alpha) {
+    const c = Math.cos(rot) * dpr;
+    const s = Math.sin(rot) * dpr;
+    ctx.globalAlpha = alpha;
+    ctx.setTransform(c, s, -s, c, x * dpr, y * dpr);
+    ctx.drawImage(sprite, -h, -h, h * 2, h * 2);
+  }
+
+  function draw(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const still = reduce.matches;
+
+    for (const a of ambient) {
+      const pulse = still ? 1 : 0.65 + 0.35 * Math.sin(t * a.speed + a.phase);
+      put(a.sprite, a.x * W, a.y * H, a.size * pulse, Math.PI / 12, 0.45 + 0.4 * pulse);
+    }
+
+    for (const p of particles) {
+      const k = p.age / p.life;
+      const alpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+      const twinkle = 0.75 + 0.25 * Math.sin(p.age * 18 + p.phase);
+      const h = p.size * (1 - k * 0.6) * twinkle;
+      put(p.sprite, p.x, p.y, h, p.rot, Math.max(0, Math.min(1, alpha)));
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+    prev = now;
+    update(dt);
+    draw(now / 1000);
+    if (particles.length || !reduce.matches) raf = requestAnimationFrame(frame);
+  }
+
+  function kick() {
+    if (raf) return;
+    prev = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    draw(performance.now() / 1000);
+  }
+
+  function add(n) {
+    total += n;
+    countEl.textContent = fmt.format(total);
+  }
+
+  const pointers = new Map();
+
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('button')) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    add(emit(e.clientX, e.clientY, 32, 'burst'));
+    kick();
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    const last = pointers.get(e.pointerId);
+    if (!last) return;
+    const dx = e.clientX - last.x;
+    const dy = e.clientY - last.y;
+    if (dx * dx + dy * dy < 16 * 16) return;
+    last.x = e.clientX;
+    last.y = e.clientY;
+    add(emit(e.clientX, e.clientY, 5, 'trail'));
+    kick();
+  });
+
+  const lift = (e) => pointers.delete(e.pointerId);
+  window.addEventListener('pointerup', lift);
+  window.addEventListener('pointercancel', lift);
+
+  // Кнопка для клавиатуры и для тех, кому лень целиться.
+  moreBtn.addEventListener('click', () => {
+    for (let i = 0; i < 7; i++) {
+      setTimeout(() => {
+        add(emit(W * (0.1 + Math.random() * 0.8), H * (0.1 + Math.random() * 0.8), 34, 'burst'));
+        kick();
+      }, i * 110);
+    }
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Один пример при открытии, чтобы сразу было видно, что будет. В счётчик не идёт.
+  if (!reduce.matches) {
+    setTimeout(() => {
+      emit(W * 0.72, H * 0.3, 40, 'burst');
+      kick();
+    }, 450);
+    kick();
+  }
+})();
+</script>
+</body>
+</html>
