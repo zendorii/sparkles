@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Розовые блёстки</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Нажимай на экран, и на нём появляются розовые блёстки и сердечки.">
+<meta name="theme-color" content="#FFC4E1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&family=Pacifico&family=Unbounded:wght@700&display=swap">
+<style>
+/* Layout: один экран, всё по центру. Сверху название и счётчик, посередине бант и крупный заголовок, снизу подсказка и кнопка. Холст с блёстками лежит поверх всего. */
+:root {
+  --pink: #FFC4E1;
+  --pink-soft: #FFE3F1;
+  --hot: #FF2E93;
+  --deep: #D6006F;
+  --berry: #6E0B3F;
+  --milk: #FFF5FA;
+  --display: 'Unbounded', 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  --script: 'Pacifico', 'Brush Script MT', cursive;
+  --body: 'Manrope', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: light;
+}
+
+html {
+  box-sizing: border-box;
+  height: 100%;
+  background: var(--pink);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--pink);
+  background-image:
+    radial-gradient(85% 65% at 50% 42%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(rgba(255, 255, 255, 0.2) 50%, transparent 50%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 50%, transparent 50%);
+  background-size: auto, 56px 56px, 56px 56px;
+  color: var(--berry);
+  font-family: var(--body);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+.stage {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.name {
+  font-family: var(--script);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.7);
+}
+
+.count {
+  margin: 0;
+  padding: 8px 16px;
+  border: 2px solid var(--hot);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.6vh, 16px);
+  min-width: 0;
+  text-align: center;
+}
+
+.bow {
+  width: clamp(72px, 17vw, 140px);
+  height: auto;
+  margin-bottom: -4px;
+  transform-origin: 50% 90%;
+  animation: wiggle 3.2s ease-in-out infinite;
+}
+.bow .loop, .bow .tail, .bow .knot {
+  fill: var(--hot);
+  stroke: var(--berry);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.bow .knot { fill: var(--deep); }
+.bow .shine {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+h1 {
+  margin: 0;
+  max-width: 100%;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, min(13.5vw, 16vh), 9rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  color: #fff;
+  -webkit-text-stroke: 0.13em var(--berry);
+  paint-order: stroke fill;
+  filter: drop-shadow(0.05em 0.06em 0 var(--hot));
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  text-align: center;
+}
+
+.hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: clamp(1rem, 2.4vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+button {
+  font: 700 1rem/1 var(--body);
+  color: #fff;
+  background: linear-gradient(#E8288A, #C9006A);
+  border: 2px solid var(--berry);
+  border-radius: 999px;
+  padding: 14px 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--berry);
+  touch-action: manipulation;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+}
+button:hover { filter: brightness(1.1); }
+button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--berry); }
+button:focus-visible { outline: 3px solid var(--berry); outline-offset: 4px; }
+
+#fx {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@media (max-height: 480px) {
+  .bow { display: none; }
+  h1 br { display: none; }
+  h1 { font-size: clamp(1.6rem, min(9vh, 6vw), 3rem); }
+  .stage { gap: 8px; padding-block: 12px 16px; }
+  .bottom { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bow { animation: none; transform: rotate(-4deg); }
+  button { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <header class="top">
+    <span class="name">Блёстки</span>
+    <p class="count">Блёсток: <span id="count">0</span></p>
+  </header>
+  <section class="middle">
+    <svg class="bow" viewBox="0 0 120 80" aria-hidden="true">
+      <path class="tail" d="M58 40 L38 74 L52 68 L60 78 Z"/>
+      <path class="tail" d="M62 40 L82 74 L68 68 L60 78 Z"/>
+      <path class="loop" d="M60 38 C44 6 6 4 8 34 C10 62 44 62 60 38 Z"/>
+      <path class="loop" d="M60 38 C76 6 114 4 112 34 C110 62 76 62 60 38 Z"/>
+      <path class="shine" d="M22 26 C26 18 36 16 44 22"/>
+      <path class="shine" d="M98 26 C94 18 84 16 76 22"/>
+      <ellipse class="knot" cx="60" cy="38" rx="9" ry="11"/>
+    </svg>
+    <h1>ВОТ ТЕБЕ <br>РОЗОВЫЙ</h1>
+  </section>
+  <section class="bottom">
+    <p class="hint">Тапни или кликни, и посыплются блёстки. Зажми и води пальцем, останется след.</p>
+    <button id="more" type="button">Сыпануть ещё</button>
+  </section>
+</main>
+<canvas id="fx" aria-hidden="true"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  const countEl = document.getElementById('count');
+  const moreBtn = document.getElementById('more');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const fmt = new Intl.NumberFormat('ru-RU');
+  const TAU = Math.PI * 2;
+  const MAX = 900;
+
+  const PALETTE = [
+    { fill: '#FFFFFF', glow: '#FF2E93' },
+    { fill: '#FFFFFF', glow: '#FFFFFF' },
+    { fill: '#FFE3F1', glow: '#FF5CAA' },
+    { fill: '#FF4FA3', glow: '#FFFFFF' },
+    { fill: '#FF1F8E', glow: '#FFD1E8' },
+    { fill: '#E0007A', glow: '#FFD1E8' },
+    { fill: '#FF8CC6', glow: '#FFFFFF' }
+  ];
+
+  // Четырёхлучевая звезда с вогнутыми сторонами.
+  function starPath(g, r) {
+    const k = 0.16 * r;
+    g.beginPath();
+    g.moveTo(0, -r);
+    g.quadraticCurveTo(k, -k, r, 0);
+    g.quadraticCurveTo(k, k, 0, r);
+    g.quadraticCurveTo(-k, k, -r, 0);
+    g.quadraticCurveTo(-k, -k, 0, -r);
+    g.closePath();
+  }
+
+  function heartPath(g, r) {
+    g.beginPath();
+    g.moveTo(0, r * 0.9);
+    g.bezierCurveTo(-r * 1.5, -r * 0.1, -r * 0.75, -r * 1.1, 0, -r * 0.4);
+    g.bezierCurveTo(r * 0.75, -r * 1.1, r * 1.5, -r * 0.1, 0, r * 0.9);
+    g.closePath();
+  }
+
+  // Каждую блёстку рисуем один раз в маленький холст, потом только копируем.
+  function makeSprite(c, shape) {
+    const s = document.createElement('canvas');
+    s.width = s.height = 64;
+    const g = s.getContext('2d');
+    g.translate(32, 32);
+    g.shadowColor = c.glow;
+    g.shadowBlur = 7;
+    g.fillStyle = c.fill;
+    if (shape === 'star') {
+      starPath(g, 24);
+    } else if (shape === 'heart') {
+      g.translate(0, -3);
+      heartPath(g, 22);
+    } else {
+      g.beginPath();
+      g.arc(0, 0, 9, 0, TAU);
+    }
+    g.fill();
+    return s;
+  }
+
+  const sprites = {
+    star: PALETTE.map((c) => makeSprite(c, 'star')),
+    heart: PALETTE.map((c) => makeSprite(c, 'heart')),
+    dot: PALETTE.map((c) => makeSprite(c, 'dot'))
+  };
+
+  // Звёзды и сердечки, которые мерцают на фоне и без нажатий.
+  const ambient = Array.from({ length: 18 }, (_, i) => {
+    const heart = i % 4 === 3;
+    return {
+      x: Math.random(),
+      y: Math.random(),
+      size: heart ? 8 + Math.random() * 8 : 7 + Math.random() * 11,
+      phase: Math.random() * TAU,
+      speed: 0.8 + Math.random() * 1.4,
+      rot: heart ? 0 : Math.PI / 12,
+      sprite: heart
+        ? sprites.heart[Math.random() < 0.5 ? 3 : 6]
+        : sprites.star[(Math.random() * 3) | 0]
+    };
+  });
+
+  const particles = [];
+  let total = 0;
+  let W = 0, H = 0, dpr = 1;
+  let raf = 0, prev = 0;
+
+  function emit(x, y, n, kind) {
+    const trail = kind === 'trail';
+    const count = Math.max(1, Math.round(n * (reduce.matches ? 0.5 : 1)));
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * TAU;
+      const sp = trail ? 20 + Math.random() * 90 : 60 + Math.random() * 340;
+      const roll = Math.random();
+      const shape = roll < 0.5 ? 'star' : roll < 0.78 ? 'heart' : 'dot';
+      const heart = shape === 'heart';
+      const idx = (Math.random() * PALETTE.length) | 0;
+      const base = shape === 'dot' ? 6 + Math.random() * 6
+        : heart ? 10 + Math.random() * 13
+        : 9 + Math.random() * 15;
+      particles.push({
+        x: x + (trail ? (Math.random() - 0.5) * 14 : 0),
+        y: y + (trail ? (Math.random() - 0.5) * 14 : 0),
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - (trail ? 0 : 40),
+        rot: heart ? (Math.random() - 0.5) * 0.9 : Math.random() * TAU,
+        vr: heart ? (Math.random() - 0.5) * 1.6 : (Math.random() - 0.5) * 5,
+        size: trail ? base * 0.8 : base,
+        sprite: sprites[shape][idx],
+        tw: heart ? 9 : 18,
+        age: 0,
+        life: 0.7 + Math.random() * 0.9,
+        phase: Math.random() * TAU
+      });
+    }
+    if (particles.length > MAX) particles.splice(0, particles.length - MAX);
+    return count;
+  }
+
+  function update(dt) {
+    const drag = Math.pow(0.12, dt);
+    let w = 0;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.age += dt;
+      if (p.age >= p.life) continue;
+      p.vx *= drag;
+      p.vy = p.vy * drag + 260 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      particles[w++] = p;
+    }
+    particles.length = w;
+  }
+
+  function put(sprite, x, y, h, rot, alpha) {
+    const c = Math.cos(rot) * dpr;
+    const s = Math.sin(rot) * dpr;
+    ctx.globalAlpha = alpha;
+    ctx.setTransform(c, s, -s, c, x * dpr, y * dpr);
+    ctx.drawImage(sprite, -h, -h, h * 2, h * 2);
+  }
+
+  function draw(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const still = reduce.matches;
+
+    for (const a of ambient) {
+      const pulse = still ? 1 : 0.65 + 0.35 * Math.sin(t * a.speed + a.phase);
+      put(a.sprite, a.x * W, a.y * H, a.size * pulse, a.rot, 0.45 + 0.4 * pulse);
+    }
+
+    for (const p of particles) {
+      const k = p.age / p.life;
+      const alpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+      const twinkle = 0.75 + 0.25 * Math.sin(p.age * p.tw + p.phase);
+      const h = p.size * (1 - k * 0.6) * twinkle;
+      put(p.sprite, p.x, p.y, h, p.rot, Math.max(0, Math.min(1, alpha)));
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+    prev = now;
+    update(dt);
+    draw(now / 1000);
+    if (particles.length || !reduce.matches) raf = requestAnimationFrame(frame);
+  }
+
+  function kick() {
+    if (raf) return;
+    prev = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    draw(performance.now() / 1000);
+  }
+
+  function add(n) {
+    total += n;
+    countEl.textContent = fmt.format(total);
+  }
+
+  const pointers = new Map();
+
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('button')) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    add(emit(e.clientX, e.clientY, 32, 'burst'));
+    kick();
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    const last = pointers.get(e.pointerId);
+    if (!last) return;
+    const dx = e.clientX - last.x;
+    const dy = e.clientY - last.y;
+    if (dx * dx + dy * dy < 16 * 16) return;
+    last.x = e.clientX;
+    last.y = e.clientY;
+    add(emit(e.clientX, e.clientY, 5, 'trail'));
+    kick();
+  });
+
+  const lift = (e) => pointers.delete(e.pointerId);
+  window.addEventListener('pointerup', lift);
+  window.addEventListener('pointercancel', lift);
+
+  // Кнопка для клавиатуры и для тех, кому лень целиться.
+  moreBtn.addEventListener('click', () => {
+    for (let i = 0; i < 7; i++) {
+      setTimeout(() => {
+        add(emit(W * (0.1 + Math.random() * 0.8), H * (0.1 + Math.random() * 0.8), 34, 'burst'));
+        kick();
+      }, i * 110);
+    }
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Один пример при открытии, чтобы сразу было видно, что будет. В счётчик не идёт.
+  if (!reduce.matches) {
+    setTimeout(() => {
+      emit(W * 0.75, H * 0.3, 40, 'burst');
+      kick();
+    }, 450);
+    kick();
+  }
+})();
+</script>
+</body>
+</html>
